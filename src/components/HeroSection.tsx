@@ -148,7 +148,7 @@ const HeroSection = () => {
                 {/* Quality options */}
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Available Downloads</p>
-                  {result.formats.map((f, i) => (
+                  {(result.formats ?? []).map((f, i) => (
                     <div
                       key={i}
                       className="flex items-center justify-between bg-muted/30 rounded-xl px-4 py-3 hover:bg-muted/50 transition-colors"
