@@ -1,6 +1,8 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
-import { Download, Loader2, Link as LinkIcon, Music, Film, MonitorPlay, Sparkles } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Download, Loader2, Link as LinkIcon, Music, Film, MonitorPlay, Sparkles, CheckCircle, HardDrive, Clock, User } from "lucide-react";
+import { mockConvertVideo, type ConversionResult } from "@/lib/mockApi";
+import { toast } from "sonner";
 
 const formats = [
   { label: "MP3", icon: Music, desc: "Audio" },
@@ -13,20 +15,25 @@ const HeroSection = () => {
   const [url, setUrl] = useState("");
   const [format, setFormat] = useState("MP3");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<null | { title: string; thumbnail: string }>(null);
+  const [result, setResult] = useState<ConversionResult | null>(null);
 
-  const handleConvert = () => {
+  const handleConvert = async () => {
     if (!url.trim()) return;
     setLoading(true);
     setResult(null);
-    // Mock API response
-    setTimeout(() => {
-      setResult({
-        title: "Sample Video — High Quality Download",
-        thumbnail: "https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=400&h=225&fit=crop",
-      });
+    try {
+      const data = await mockConvertVideo(url, format);
+      setResult(data);
+      toast.success("Conversion complete! Your file is ready.");
+    } catch {
+      toast.error("Something went wrong. Please try again.");
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
+  };
+
+  const handleDownload = (quality: string) => {
+    toast.info(`Starting download: ${quality}… (mock — connect a real API to enable)`);
   };
 
   return (
@@ -106,30 +113,73 @@ const HeroSection = () => {
             ))}
           </div>
 
-          {/* Mock Result */}
-          {result && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-8 glass rounded-2xl p-6 text-left"
-            >
-              <div className="flex flex-col sm:flex-row gap-4 items-center">
-                <img
-                  src={result.thumbnail}
-                  alt="Video thumbnail"
-                  className="w-full sm:w-40 h-24 object-cover rounded-lg"
-                />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-foreground mb-1">{result.title}</h3>
-                  <p className="text-sm text-muted-foreground mb-3">Format: {format} • Ready to download</p>
-                  <button className="flex items-center gap-2 px-6 py-2 rounded-lg bg-primary text-primary-foreground font-semibold text-sm transition-all hover:brightness-110 glow-primary">
-                    <Download size={16} />
-                    Download {format}
-                  </button>
+          {/* Result Card */}
+          <AnimatePresence>
+            {result && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mt-8 glass rounded-2xl p-6 text-left"
+              >
+                {/* Video info header */}
+                <div className="flex flex-col sm:flex-row gap-5 items-start mb-6">
+                  <img
+                    src={result.thumbnail}
+                    alt={result.title}
+                    className="w-full sm:w-44 h-28 object-cover rounded-xl"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded">
+                        {result.platform}
+                      </span>
+                      <CheckCircle size={14} className="text-primary" />
+                      <span className="text-xs text-primary">Ready</span>
+                    </div>
+                    <h3 className="font-semibold text-foreground mb-2 leading-snug truncate">{result.title}</h3>
+                    <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1"><Clock size={12} />{result.duration}</span>
+                      <span className="flex items-center gap-1"><User size={12} />{result.author}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          )}
+
+                {/* Quality options */}
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Available Downloads</p>
+                  {result.formats.map((f, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between bg-muted/30 rounded-xl px-4 py-3 hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                          {f.format === "MP3" ? <Music size={14} className="text-primary" /> : <Film size={14} className="text-primary" />}
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-foreground">{f.quality}</span>
+                          <span className="text-xs text-muted-foreground ml-2">{f.format}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
+                          <HardDrive size={12} />{f.fileSize}
+                        </span>
+                        <button
+                          onClick={() => handleDownload(f.quality)}
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium text-xs transition-all hover:brightness-110 glow-primary"
+                        >
+                          <Download size={13} />
+                          Download
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Trust badges */}
