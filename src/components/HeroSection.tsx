@@ -1,39 +1,38 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Loader2, Link as LinkIcon, Music, Film, MonitorPlay, Sparkles, CheckCircle, HardDrive, Clock, User } from "lucide-react";
-import { mockConvertVideo, type ConversionResult } from "@/lib/mockApi";
+import { Download, Loader2, Link as LinkIcon, Sparkles, CheckCircle, Clock, User } from "lucide-react";
+import { fetchVideoInfo, type VideoResult, type MediaItem } from "@/lib/videoApi";
 import { toast } from "sonner";
-
-const formats = [
-  { label: "MP3", icon: Music, desc: "Audio" },
-  { label: "MP4", icon: Film, desc: "720p" },
-  { label: "1080p", icon: MonitorPlay, desc: "Full HD" },
-  { label: "4K", icon: Sparkles, desc: "Ultra HD" },
-];
 
 const HeroSection = () => {
   const [url, setUrl] = useState("");
-  const [format, setFormat] = useState("MP3");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<ConversionResult | null>(null);
+  const [result, setResult] = useState<VideoResult | null>(null);
 
   const handleConvert = async () => {
     if (!url.trim()) return;
     setLoading(true);
     setResult(null);
     try {
-      const data = await mockConvertVideo(url, format);
+      const data = await fetchVideoInfo(url);
       setResult(data);
-      toast.success("Conversion complete! Your file is ready.");
-    } catch {
-      toast.error("Something went wrong. Please try again.");
+      toast.success("Video info fetched! Choose a format to download.");
+    } catch (err: any) {
+      toast.error(err.message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDownload = (quality: string) => {
-    toast.info(`Starting download: ${quality}… (mock — connect a real API to enable)`);
+  const handleDownload = (media: MediaItem) => {
+    window.open(media.url, "_blank");
+  };
+
+  const getTypeIcon = (type: string) => {
+    if (type === "audio") return "🎵";
+    if (type === "video") return "🎬";
+    if (type === "image") return "🖼️";
+    return "📁";
   };
 
   return (
@@ -87,30 +86,11 @@ const HeroSection = () => {
                 {loading ? (
                   <Loader2 size={18} className="animate-spin" />
                 ) : (
-                  <Download size={18} />
+                  <Sparkles size={18} />
                 )}
-                {loading ? "Converting..." : "Convert"}
+                {loading ? "Fetching..." : "Get Links"}
               </button>
             </div>
-          </div>
-
-          {/* Format Selector */}
-          <div className="flex justify-center gap-3 flex-wrap">
-            {formats.map((f) => (
-              <button
-                key={f.label}
-                onClick={() => setFormat(f.label)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
-                  format === f.label
-                    ? "bg-primary/20 text-primary border border-primary/30"
-                    : "glass text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <f.icon size={16} />
-                {f.label}
-                <span className="text-xs opacity-60">{f.desc}</span>
-              </button>
-            ))}
           </div>
 
           {/* Result Card */}
@@ -124,56 +104,70 @@ const HeroSection = () => {
               >
                 {/* Video info header */}
                 <div className="flex flex-col sm:flex-row gap-5 items-start mb-6">
-                  <img
-                    src={result.thumbnail}
-                    alt={result.title}
-                    className="w-full sm:w-44 h-28 object-cover rounded-xl"
-                  />
+                  {result.thumbnail && (
+                    <img
+                      src={result.thumbnail}
+                      alt={result.title}
+                      className="w-full sm:w-44 h-28 object-cover rounded-xl"
+                    />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded">
-                        {result.platform}
-                      </span>
+                      {result.source && (
+                        <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded">
+                          {result.source}
+                        </span>
+                      )}
                       <CheckCircle size={14} className="text-primary" />
                       <span className="text-xs text-primary">Ready</span>
                     </div>
-                    <h3 className="font-semibold text-foreground mb-2 leading-snug truncate">{result.title}</h3>
+                    <h3 className="font-semibold text-foreground mb-2 leading-snug line-clamp-2">
+                      {result.title || "Untitled"}
+                    </h3>
                     <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Clock size={12} />{result.duration}</span>
-                      <span className="flex items-center gap-1"><User size={12} />{result.author}</span>
+                      {result.duration && (
+                        <span className="flex items-center gap-1"><Clock size={12} />{result.duration}</span>
+                      )}
+                      {result.author && (
+                        <span className="flex items-center gap-1"><User size={12} />{result.author}</span>
+                      )}
                     </div>
                   </div>
                 </div>
 
-                {/* Quality options */}
+                {/* Download options */}
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Available Downloads</p>
-                  {(result.formats ?? []).map((f, i) => (
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    Available Downloads ({(result.medias ?? []).length})
+                  </p>
+                  {(result.medias ?? []).length === 0 && (
+                    <p className="text-sm text-muted-foreground">No downloadable media found for this URL.</p>
+                  )}
+                  {(result.medias ?? []).map((media, i) => (
                     <div
                       key={i}
                       className="flex items-center justify-between bg-muted/30 rounded-xl px-4 py-3 hover:bg-muted/50 transition-colors"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                          {f.format === "MP3" ? <Music size={14} className="text-primary" /> : <Film size={14} className="text-primary" />}
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-sm">
+                          {getTypeIcon(media.type)}
                         </div>
                         <div>
-                          <span className="text-sm font-medium text-foreground">{f.quality}</span>
-                          <span className="text-xs text-muted-foreground ml-2">{f.format}</span>
+                          <span className="text-sm font-medium text-foreground">
+                            {media.quality || media.type}
+                          </span>
+                          <span className="text-xs text-muted-foreground ml-2">
+                            .{media.extension}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <HardDrive size={12} />{f.fileSize}
-                        </span>
-                        <button
-                          onClick={() => handleDownload(f.quality)}
-                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium text-xs transition-all hover:brightness-110 glow-primary"
-                        >
-                          <Download size={13} />
-                          Download
-                        </button>
-                      </div>
+                      <button
+                        onClick={() => handleDownload(media)}
+                        className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground font-medium text-xs transition-all hover:brightness-110 glow-primary"
+                      >
+                        <Download size={13} />
+                        Download
+                      </button>
                     </div>
                   ))}
                 </div>
