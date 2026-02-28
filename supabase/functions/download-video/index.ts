@@ -29,7 +29,7 @@ serve(async (req) => {
     }
 
     const response = await fetch(
-      "https://download-all-in-one-elite.p.rapidapi.com/api/rapidapi",
+      "https://download-all-in-one-elite.p.rapidapi.com/v1/social/autolink",
       {
         method: "POST",
         headers: {
