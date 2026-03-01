@@ -4,6 +4,7 @@ import HowItWorks from "@/components/HowItWorks";
 import FAQSection from "@/components/FAQSection";
 import ReviewsSection from "@/components/ReviewsSection";
 import Footer from "@/components/Footer";
+import ShareButtons from "@/components/ShareButtons";
 import WhatsAppButton from "@/components/WhatsAppButton";
 
 const Index = () => (
@@ -13,6 +14,7 @@ const Index = () => (
     <HowItWorks />
     <ReviewsSection />
     <FAQSection />
+    <ShareButtons />
     <Footer />
     <WhatsAppButton />
   </>
